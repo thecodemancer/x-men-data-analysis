@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import re
 
 # --- Configuration ---
 WIKIPEDIA_URL = "https://en.wikipedia.org/wiki/List_of_X-Men_(TV_series)_episodes"
@@ -9,7 +10,9 @@ OUTPUT_CSV = "xmen_episodes.csv"
 
 # --- Web Scraping ---
 def scrape_episode_data(url, table_class):
-    """Scrapes episode data from multiple Wikipedia tables.
+    """Scrapes episode data from multiple Wikipedia tables, 
+       handling rows with rowspan, missing cells, inconsistent headers,
+       and multi-part episodes using next_sibling and previous_sibling.
 
     Args:
         url (str): The URL of the Wikipedia page.
@@ -30,30 +33,54 @@ def scrape_episode_data(url, table_class):
 
     all_episodes = []
     for episode_table in episode_tables:
-        # Extract table headers
-        headers = [th.text.strip() for th in episode_table.find("tr").find_all("th")]
+        # Extract table headers from the first row
+        headers = [th.text.strip() for th in episode_table.find_all("tr")[0].find_all("th")]
+
+        # Find the index of the "Original air date" header
+        air_date_index = headers.index("Original air date")
+
+        # Find the index of the "Title" header
+        title_index = headers.index("Title")
 
         # Extract episode data rows
         for row in episode_table.find_all("tr", class_="vevent module-episode-list-row"):
-            episode_data = {}
-            for i, cell in enumerate(row.find_all(["td", "th"])):
-                header = headers[i]
-                episode_data[header] = cell.text.strip()
+            current_episode_data = {}
+            cells = row.find_all(["td", "th"])
 
-            # Get episode summary (Corrected Part)
-            summary_div = row.find_next_sibling("tr").find("div", class_="shortSummaryText")
-            if summary_div:
-                # Extract text from the summary div and remove links
-                summary_text = summary_div.text.strip()
-                episode_data["Summary"] = summary_text
+            # Check for rowspan in the Title column
+            title_rowspan = int(cells[title_index].attrs['rowspan']) if 'rowspan' in cells[title_index].attrs else 1
 
-            all_episodes.append(episode_data)
+            # Extract data from cells
+            for j, cell in enumerate(cells):
+                if j < len(headers):
+                    header = headers[j]
+                    current_episode_data[header] = cell.text.strip()
+
+            # Handle multi-part episodes
+            if title_rowspan > 1:
+                next_row = row.next_sibling
+                while next_row and next_row.name == 'tr' and 'expand-child' not in next_row.get('class', []):
+                    part_cells = next_row.find_all(["td", "th"])
+                    if air_date_index < len(part_cells):
+                        current_episode_data[headers[air_date_index]] = part_cells[air_date_index].text.strip()
+                    next_row = next_row.next_sibling
+
+            # Get episode summary
+            summary_row = row.next_sibling
+            while summary_row and summary_row.name != 'tr':
+                summary_row = summary_row.next_sibling
+            if summary_row and 'expand-child' in summary_row.get('class', []):
+                summary_div = summary_row.find("div", class_="shortSummaryText")
+                if summary_div:
+                    summary_text = summary_div.text.strip()
+                    current_episode_data["Summary"] = summary_text
+
+            all_episodes.append(current_episode_data)
 
     return all_episodes
 
-# --- Data Processing --- (Remains the same)
+# --- Data Processing ---
 def clean_episode_data(episodes):
-    # ... (Your data cleaning and formatting logic here) ... 
     """Cleans and formats the scraped episode data.
 
     Args:
@@ -71,9 +98,11 @@ def clean_episode_data(episodes):
     # Convert "Original air date" to datetime objects
     df["Original air date"] = pd.to_datetime(df["Original air date"])
 
+    # ... (Add more cleaning and formatting as needed) ...
+
     return df
 
-# --- Main Script --- (Remains the same)
+# --- Main Script ---
 if __name__ == "__main__":
     try:
         episodes = scrape_episode_data(WIKIPEDIA_URL, TABLE_CLASS)
