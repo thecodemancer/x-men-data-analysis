@@ -1,7 +1,7 @@
 # X-MEN Data Analysis
 A data analysis using Google Cloud services like Dataform, Cloud Storage, BigQuery and Looker Studio.
 
-<img src="images/xmen.png" />
+<img src="images/xmen.png" width="100%" alt="By David Regalado" />
 
 ## The Process
 
@@ -13,6 +13,14 @@ Extract data about episodes using the wikipedia tables in this URL: https://en.w
 - Written by
 - Original air date
 - Summary
+
+In other words, extract info from awful and fanciful tables like this:
+
+<img src="images/wikipedia.png" width="100%" alt="By David Regalado" />
+
+To this:
+
+<img src="images/dataset.png" width="100%" alt="By David Regalado" />
 
 ## Git setup
 
