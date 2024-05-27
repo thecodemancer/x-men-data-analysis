@@ -82,7 +82,3 @@ Execute the following command:
 ```
 python xmen_scraper.py
 ```
-
-```
-python xmen_scraper.py
-```
