@@ -1,6 +1,18 @@
-# x- men-data-analysis
+# X-MEN Data Analysis
 A data analysis using Google Cloud services like Dataform, Cloud Storage, BigQuery and Looker Studio.
+
 <img src="images/xmen.png" />
+
+## The Process
+
+Extract data about episodes using the wikipedia tables in this URL: https://en.wikipedia.org/wiki/List_of_X-Men:_The_Animated_Series_episodes. The Python script uses web scraping to obtain information about these columns:
+- No. overall	
+- No. in season
+- Title
+- Directed by
+- Written by
+- Original air date
+- Summary
 
 ## Git setup
 
