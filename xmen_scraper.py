@@ -6,7 +6,7 @@ import re
 # --- Configuration ---
 WIKIPEDIA_URL = "https://en.wikipedia.org/wiki/List_of_X-Men_(TV_series)_episodes"
 TABLE_CLASS = "wikitable plainrowheaders wikiepisodetable" 
-OUTPUT_CSV = "xmen_episodes.csv"
+OUTPUT_CSV = "datasets/xmen_episodes.csv"
 
 # --- Web Scraping ---
 def scrape_episode_data(url, table_class):
@@ -26,7 +26,7 @@ def scrape_episode_data(url, table_class):
     response.raise_for_status()
 
     soup = BeautifulSoup(response.content, "html.parser")
-    episode_tables = soup.find_all("table", {"class": table_class})
+    episode_tables = soup.find_all("table", {"class": table_class}, limit=5)
 
     if not episode_tables:
         raise ValueError(f"No tables with class '{table_class}' found on the page.")
@@ -52,30 +52,41 @@ def scrape_episode_data(url, table_class):
 
             # Extract data from cells
             for j, cell in enumerate(cells):
-                if j < len(headers):
-                    header = headers[j]
-                    current_episode_data[header] = cell.text.strip()
-
-            # Handle multi-part episodes
-            if title_rowspan > 1:
-                next_row = row.next_sibling
-                while next_row and next_row.name == 'tr' and 'expand-child' not in next_row.get('class', []):
-                    part_cells = next_row.find_all(["td", "th"])
-                    if air_date_index < len(part_cells):
-                        current_episode_data[headers[air_date_index]] = part_cells[air_date_index].text.strip()
-                    next_row = next_row.next_sibling
+                header = headers[j]
+                current_episode_data[header] = cell.text.strip()
 
             # Get episode summary
-            summary_row = row.next_sibling
-            while summary_row and summary_row.name != 'tr':
-                summary_row = summary_row.next_sibling
-            if summary_row and 'expand-child' in summary_row.get('class', []):
-                summary_div = summary_row.find("div", class_="shortSummaryText")
+            summary_text=""
+            current_episode_data["Summary"]=""
+            summary_row = row.find_next_siblings("tr", {"class":'expand-child'}, limit=1)
+            for summary in summary_row:
+                summary_div = summary.find("div", class_="shortSummaryText")
                 if summary_div:
                     summary_text = summary_div.text.strip()
                     current_episode_data["Summary"] = summary_text
 
             all_episodes.append(current_episode_data)
+
+            # Handle multi-part episodes
+            if title_rowspan > 1:
+                next_row = row.next_sibling
+                while next_row and next_row.name == 'tr' and 'expand-child' not in next_row.get('class', []):                    
+                    part_cells = next_row.find_all(["td", "th"])
+                    #if air_date_index < len(part_cells):
+                    if len(part_cells):
+                        #print(part_cells[0].text)
+                        #print(part_cells[1].text)
+                        #print(part_cells[2].text)
+                        #current_episode_data[headers[air_date_index]] = part_cells[air_date_index].text.strip()
+                        current_episode_data["No.overall"] = part_cells[0].text.strip()
+                        current_episode_data["No. inseason"] = part_cells[1].text.strip()
+                        #current_episode_data["Original air date"] = part_cells[2].text.strip()
+                        current_episode_data["Summary"] = summary_text
+                        
+                        all_episodes.append(current_episode_data)    
+                    break
+                    #next_row = next_row.next_sibling
+                    
 
     return all_episodes
 
