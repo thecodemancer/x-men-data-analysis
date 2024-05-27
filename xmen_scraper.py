@@ -32,61 +32,97 @@ def scrape_episode_data(url, table_class):
         raise ValueError(f"No tables with class '{table_class}' found on the page.")
 
     all_episodes = []
-    for episode_table in episode_tables:
+    for season, episode_table in enumerate(episode_tables):    
         # Extract table headers from the first row
         headers = [th.text.strip() for th in episode_table.find_all("tr")[0].find_all("th")]
 
         # Find the index of the "Original air date" header
         air_date_index = headers.index("Original air date")
-
+        
         # Find the index of the "Title" header
         title_index = headers.index("Title")
-
+        directedby_index = headers.index("Directed by")
+        writtenby_index = headers.index("Written by")
         # Extract episode data rows
         for row in episode_table.find_all("tr", class_="vevent module-episode-list-row"):
             current_episode_data = {}
             cells = row.find_all(["td", "th"])
-
             # Check for rowspan in the Title column
             title_rowspan = int(cells[title_index].attrs['rowspan']) if 'rowspan' in cells[title_index].attrs else 1
+            # Check for rowspan in the "Directed by" column
+            directedby_rowspan = int(cells[directedby_index].attrs['rowspan']) if 'rowspan' in cells[directedby_index].attrs else 1
+            # Check for rowspan in the "Written by" column
+            writtenby_rowspan = int(cells[writtenby_index].attrs['rowspan']) if 'rowspan' in cells[writtenby_index].attrs else 1
 
+            current_episode_data["season"] = season+1
             # Extract data from cells
             for j, cell in enumerate(cells):
                 header = headers[j]
                 current_episode_data[header] = cell.text.strip()
-
+            
             # Get episode summary
-            summary_text=""
             current_episode_data["Summary"]=""
             summary_row = row.find_next_siblings("tr", {"class":'expand-child'}, limit=1)
             for summary in summary_row:
                 summary_div = summary.find("div", class_="shortSummaryText")
                 if summary_div:
-                    summary_text = summary_div.text.strip()
-                    current_episode_data["Summary"] = summary_text
+                    current_episode_data["Summary"] = summary_div.text.strip()
 
             all_episodes.append(current_episode_data)
 
             # Handle multi-part episodes
+            #for title
             if title_rowspan > 1:
                 next_row = row.next_sibling
-                while next_row and next_row.name == 'tr' and 'expand-child' not in next_row.get('class', []):                    
+                part_cells = next_row.find_all(["td", "th"])
+                
+                #You cannot copy a list simply by typing list2 = list1, 
+                #because: list2 will only be a reference to list1, 
+                #and changes made in list1 will automatically also be made in list2.
+                current_episode_data_part_2 = current_episode_data.copy()
+                if len(part_cells) == 3:
+                    current_episode_data_part_2["No.overall"] = part_cells[0].text.strip()
+                    current_episode_data_part_2["No. inseason"] = part_cells[1].text.strip()
+                    current_episode_data_part_2["Original air date"] = part_cells[2].text.strip()                    
+                    all_episodes.append(current_episode_data_part_2)
+                if len(part_cells) == 4:
+                    current_episode_data_part_2["No.overall"] = part_cells[0].text.strip()
+                    current_episode_data_part_2["No. inseason"] = part_cells[1].text.strip()
+                    current_episode_data_part_2["Written by"] = part_cells[2].text.strip()                    
+                    current_episode_data_part_2["Original air date"] = part_cells[3].text.strip()                    
+                    all_episodes.append(current_episode_data_part_2)
+
+            #for director
+            if directedby_rowspan >= 4 and title_rowspan == 1:
+                next_row = row.next_sibling
+                while next_row and next_row.name == 'tr' and 'expand-child' not in next_row.get('class', []) and next_row.find_all(["td", "th"]):
                     part_cells = next_row.find_all(["td", "th"])
-                    #if air_date_index < len(part_cells):
-                    if len(part_cells):
-                        #print(part_cells[0].text)
-                        #print(part_cells[1].text)
-                        #print(part_cells[2].text)
-                        #current_episode_data[headers[air_date_index]] = part_cells[air_date_index].text.strip()
-                        current_episode_data["No.overall"] = part_cells[0].text.strip()
-                        current_episode_data["No. inseason"] = part_cells[1].text.strip()
-                        #current_episode_data["Original air date"] = part_cells[2].text.strip()
-                        current_episode_data["Summary"] = summary_text
-                        
-                        all_episodes.append(current_episode_data)    
-                    break
-                    #next_row = next_row.next_sibling
-                    
+                    print(len(part_cells))
+                    #You cannot copy a list simply by typing list2 = list1, 
+                    #because: list2 will only be a reference to list1, 
+                    #and changes made in list1 will automatically also be made in list2.
+                    current_episode_data_part_2 = current_episode_data.copy()
+                    if len(part_cells) >= 4:
+                        current_episode_data_part_2["No.overall"] = part_cells[0].text.strip()
+                        current_episode_data_part_2["No. inseason"] = part_cells[1].text.strip()
+                        current_episode_data_part_2["Title"] = part_cells[2].text.strip()                    
+                        current_episode_data_part_2["Written by"] = part_cells[3].text.strip()                    
+                        current_episode_data_part_2["Original air date"] = part_cells[4].text.strip()                    
+                        all_episodes.append(current_episode_data_part_2)
+                    next_row = next_row.next_sibling
+
+            if writtenby_rowspan > 1:
+                next_row = row.next_sibling
+                part_cells = next_row.find_all(["td", "th"])
+                
+                #You cannot copy a list simply by typing list2 = list1, 
+                #because: list2 will only be a reference to list1, 
+                #and changes made in list1 will automatically also be made in list2.
+                current_episode_data_part_2 = current_episode_data.copy()
+                if len(part_cells) == 2:
+                    current_episode_data_part_2["No.overall"] = part_cells[0].text.strip()
+                    current_episode_data_part_2["No. inseason"] = part_cells[1].text.strip()
+                    all_episodes.append(current_episode_data_part_2)
 
     return all_episodes
 
@@ -123,3 +159,5 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"An error occurred: {e}")
+
+#Credits by @thecodemancer
