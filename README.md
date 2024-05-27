@@ -2,8 +2,6 @@
 A data analysis using Google Cloud services like Dataform, Cloud Storage, BigQuery and Looker Studio.
 <img src="images/xmen.png" />
 
-# webserver
-
 ## Git setup
 
 ### Installing git
@@ -80,6 +78,10 @@ pip install -r requirements.txt
 ### Running
 
 Execute the following command:
+
+```
+python xmen_scraper.py
+```
 
 ```
 python xmen_scraper.py
